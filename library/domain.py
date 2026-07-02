@@ -10,7 +10,18 @@ class EmailAddress:
     def __post_init__(self) -> None:
         if "@" not in self.value:
             raise ValueError("email address must contain @")
+        
+@dataclass(frozen=True)
+class FullName:
+    value: str
 
+    def __post_init__(self) -> None:
+        cleaned_value = self.value.strip()
+
+        if len(cleaned_value) < 2:
+            raise ValueError("full name must have at least two characters")
+
+        object.__setattr__(self, "value", cleaned_value) 
 
 class Book:
     def __init__(self, title: str, author: str, total_copies: int) -> None:
@@ -42,7 +53,7 @@ class Book:
 
 
 class Member:
-    def __init__(self, name: str, email: EmailAddress) -> None:
+    def __init__(self, name: FullName, email: EmailAddress) -> None:
         self.id = uuid4()
         self.name = name
         self.email = email
