@@ -1,3 +1,5 @@
+import logging
+
 from library.domain import Loan
 from library.exceptions import (
     BookNotFound,
@@ -6,6 +8,8 @@ from library.exceptions import (
     LoanNotFound,
     MemberNotFound,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class InMemoryBookRepository:
@@ -62,19 +66,21 @@ class BorrowBookService:
         self.loan_repository = loan_repository
 
     def borrow(self, book_id, member_id):
+        logger.info("Borrow request started", extra={"book_id": str(book_id), "member_id": str(member_id)})
         book = self.book_repository.get(book_id)
         member = self.member_repository.get(member_id)
 
         try:
             book.borrow_copy()
         except ValueError as exc:
+            logger.warning("Borrow request rejected: unavailable book", extra={"book_id": str(book_id)})
             raise BookUnavailable(str(exc)) from exc
 
         loan = Loan(book_id=book.id, member_id=member.id)
 
         self.book_repository.add(book)
         self.loan_repository.add(loan)
-
+        logger.info("Borrow request completed", extra={"loan_id": str(loan.id)})
         return loan
 
 
@@ -84,13 +90,18 @@ class ReturnBookService:
         self.loan_repository = loan_repository
 
     def return_book(self, loan_id):
+        logger.info("Return request started", extra={"loan_id": str(loan_id)})
+
         loan = self.loan_repository.get(loan_id)
         book = self.book_repository.get(loan.book_id)
-        
 
         try:
             loan.mark_returned()
         except ValueError as exc:
+            logger.warning(
+                "Return request rejected: loan already returned",
+                extra={"loan_id": str(loan_id)},
+            )
             raise LoanAlreadyReturned(str(exc)) from exc
 
         book.return_copy()
@@ -98,4 +109,8 @@ class ReturnBookService:
         self.book_repository.add(book)
         self.loan_repository.add(loan)
 
+        logger.info(
+            "Return request completed",
+            extra={"loan_id": str(loan_id), "book_id": str(book.id)},
+        )
         return loan
