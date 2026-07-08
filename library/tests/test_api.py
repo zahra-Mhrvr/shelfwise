@@ -1,0 +1,130 @@
+from datetime import timedelta
+
+import pytest
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from library.models import Book, Loan, Member
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+@pytest.fixture
+def book():
+    return Book.objects.create(
+        title="Clean Code",
+        author="Robert C. Martin",
+        total_copies=1,
+        available_copies=1,
+    )
+
+
+@pytest.fixture
+def member():
+    return Member.objects.create(name="Ada Lovelace", email="ada@example.com")
+
+
+@pytest.mark.django_db
+def test_book_endpoint_lists_books(api_client, book):
+    response = api_client.get("/api/books/")
+
+    assert response.status_code == 200
+    assert response.data[0]["title"] == book.title
+
+
+@pytest.mark.django_db
+def test_member_endpoint_creates_member(api_client):
+    response = api_client.post(
+        "/api/members/",
+        {"name": "Grace Hopper", "email": "grace@example.com"},
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert Member.objects.filter(email="grace@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_borrow_endpoint_creates_loan_and_decreases_available_copies(
+    api_client,
+    book,
+    member,
+):
+    response = api_client.post(
+        "/api/loans/borrow/",
+        {"book": book.id, "member": member.id},
+        format="json",
+    )
+
+    book.refresh_from_db()
+
+    assert response.status_code == 201
+    assert response.data["book"] == book.id
+    assert response.data["member"] == member.id
+    assert book.available_copies == 0
+    assert Loan.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_borrow_endpoint_rejects_unavailable_book(api_client, book, member):
+    book.borrow_copy()
+    book.save(update_fields=["available_copies"])
+
+    response = api_client.post(
+        "/api/loans/borrow/",
+        {"book": book.id, "member": member.id},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.data["detail"] == "no available copies"
+
+
+@pytest.mark.django_db
+def test_return_book_endpoint_marks_loan_returned_and_restores_available_copy(
+    api_client,
+    book,
+    member,
+):
+    book.borrow_copy()
+    book.save(update_fields=["available_copies"])
+    loan = Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() + timedelta(days=14),
+    )
+
+    response = api_client.post(f"/api/loans/{loan.id}/return_book/")
+
+    book.refresh_from_db()
+    loan.refresh_from_db()
+
+    assert response.status_code == 200
+    assert loan.returned_on == timezone.localdate()
+    assert book.available_copies == 1
+
+
+@pytest.mark.django_db
+def test_active_loans_endpoint_lists_only_active_loans(api_client, book, member):
+    active_loan = Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() + timedelta(days=14),
+    )
+    returned_loan = Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() + timedelta(days=14),
+        returned_on=timezone.localdate(),
+    )
+
+    response = api_client.get("/api/loans/active/")
+
+    returned_ids = {loan["id"] for loan in response.data}
+
+    assert response.status_code == 200
+    assert active_loan.id in returned_ids
+    assert returned_loan.id not in returned_ids
