@@ -1,14 +1,16 @@
-from datetime import timedelta
-
-from django.db import transaction
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from .exceptions import BookReturnRejected, BookUnavailable, LoanAlreadyReturned
 from .models import Book, Loan, Member
 from .serializers import BookSerializer, LoanSerializer, MemberSerializer
+from .services import DjangoBorrowBookService, DjangoReturnBookService
+
+
+def conflict(message: str) -> Response:
+    return Response({"detail": message}, status=status.HTTP_409_CONFLICT)
 
 
 class BookViewSet(viewsets.ModelViewSet):
@@ -24,6 +26,8 @@ class MemberViewSet(viewsets.ModelViewSet):
 class LoanViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Loan.objects.select_related("book", "member").all().order_by("-borrowed_on")
     serializer_class = LoanSerializer
+    borrow_service_class = DjangoBorrowBookService
+    return_service_class = DjangoReturnBookService
 
     @action(detail=False, methods=["post"])
     def borrow(self, request):
@@ -36,24 +40,13 @@ class LoanViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        with transaction.atomic():
-            book = get_object_or_404(Book.objects.select_for_update(), pk=book_id)
-            member = get_object_or_404(Member, pk=member_id)
+        book = get_object_or_404(Book, pk=book_id)
+        member = get_object_or_404(Member, pk=member_id)
 
-            try:
-                book.borrow_copy()
-            except ValueError as exc:
-                return Response(
-                    {"detail": str(exc)},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            book.save(update_fields=["available_copies"])
-            loan = Loan.objects.create(
-                book=book,
-                member=member,
-                due_on=timezone.localdate() + timedelta(days=14),
-            )
+        try:
+            loan = self.borrow_service_class().borrow(book=book, member=member)
+        except BookUnavailable as exc:
+            return conflict(str(exc))
 
         return Response(LoanSerializer(loan).data, status=status.HTTP_201_CREATED)
 
@@ -61,18 +54,10 @@ class LoanViewSet(viewsets.ReadOnlyModelViewSet):
     def return_book(self, request, pk=None):
         loan = self.get_object()
 
-        with transaction.atomic():
-            try:
-                loan.mark_returned()
-                loan.book.return_copy()
-            except ValueError as exc:
-                return Response(
-                    {"detail": str(exc)},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            loan.save(update_fields=["returned_on"])
-            loan.book.save(update_fields=["available_copies"])
+        try:
+            loan = self.return_service_class().return_book(loan)
+        except (BookReturnRejected, LoanAlreadyReturned) as exc:
+            return conflict(str(exc))
 
         return Response(LoanSerializer(loan).data)
 

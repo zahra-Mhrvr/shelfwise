@@ -1,13 +1,18 @@
 import logging
+from datetime import timedelta
 
+from django.db import transaction
+from django.utils import timezone
 from library.domain import Loan
 from library.exceptions import (
     BookNotFound,
+    BookReturnRejected,
     BookUnavailable,
     LoanAlreadyReturned,
     LoanNotFound,
     MemberNotFound,
 )
+from library.models import Loan as LoanModel
 
 logger = logging.getLogger(__name__)
 
@@ -112,5 +117,59 @@ class ReturnBookService:
         logger.info(
             "Return request completed",
             extra={"loan_id": str(loan_id), "book_id": str(book.id)},
+        )
+        return loan
+
+
+class DjangoBorrowBookService:
+    def borrow(self, book, member):
+        logger.info(
+            "Borrow request started",
+            extra={"book_id": str(book.id), "member_id": str(member.id)},
+        )
+
+        try:
+            with transaction.atomic():
+                book.borrow_copy()
+                book.save(update_fields=["available_copies"])
+                loan = LoanModel.objects.create(
+                    book=book,
+                    member=member,
+                    due_on=timezone.localdate() + timedelta(days=14),
+                )
+        except ValueError as exc:
+            logger.warning(
+                "Borrow request rejected: unavailable book",
+                extra={"book_id": str(book.id)},
+            )
+            raise BookUnavailable(str(exc)) from exc
+
+        logger.info("Borrow request completed", extra={"loan_id": str(loan.id)})
+        return loan
+
+
+class DjangoReturnBookService:
+    def return_book(self, loan):
+        logger.info("Return request started", extra={"loan_id": str(loan.id)})
+
+        try:
+            with transaction.atomic():
+                loan.mark_returned()
+                loan.book.return_copy()
+                loan.save(update_fields=["returned_on"])
+                loan.book.save(update_fields=["available_copies"])
+        except ValueError as exc:
+            message = str(exc)
+            logger.warning(
+                "Return request rejected",
+                extra={"loan_id": str(loan.id), "reason": message},
+            )
+            if message == "loan has already been returned":
+                raise LoanAlreadyReturned(message) from exc
+            raise BookReturnRejected(message) from exc
+
+        logger.info(
+            "Return request completed",
+            extra={"loan_id": str(loan.id), "book_id": str(loan.book.id)},
         )
         return loan

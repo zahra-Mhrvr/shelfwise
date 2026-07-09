@@ -6,6 +6,10 @@ class BookUnavailable(LibraryError):
     pass
 
 
+class BookReturnRejected(LibraryError):
+    pass
+
+
 class MemberNotFound(LibraryError):
     pass
 
