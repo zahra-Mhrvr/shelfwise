@@ -28,6 +28,25 @@ def member():
 
 
 @pytest.mark.django_db
+def test_create_book(api_client):
+    response = api_client.post(
+        "/api/books/",
+        {
+            "title": "Django In Practice",
+            "author": "Dana Web",
+            "total_copies": 3,
+            "available_copies": 3,
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert Book.objects.count() == 1
+    assert response.data["title"] == "Django In Practice"
+    assert response.data["available_copies"] == 3
+
+
+@pytest.mark.django_db
 def test_book_endpoint_lists_books(api_client, book):
     response = api_client.get("/api/books/")
 
@@ -81,6 +100,7 @@ def test_borrow_endpoint_rejects_unavailable_book(api_client, book, member):
 
     assert response.status_code == 409
     assert response.data["detail"] == "no available copies"
+    assert Loan.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -126,6 +146,8 @@ def test_return_book_endpoint_marks_loan_returned_and_restores_available_copy(
     loan.refresh_from_db()
 
     assert response.status_code == 200
+    assert response.data["id"] == loan.id
+    assert response.data["returned_on"] == str(timezone.localdate())
     assert loan.returned_on == timezone.localdate()
     assert book.available_copies == 1
 
