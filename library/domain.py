@@ -28,7 +28,7 @@ class Book:
         return self.id == other.id
 
     def __hash__(self) -> int:
-        return hash(self.id)   
+        return hash(self.id)
 
     def borrow_copy(self) -> None:
         if self.available_copies == 0:

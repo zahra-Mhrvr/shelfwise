@@ -31,7 +31,9 @@ def test_book_clean_rejects_more_available_copies_than_total_copies():
         available_copies=2,
     )
 
-    with pytest.raises(ValidationError, match="available copies cannot exceed total copies"):
+    with pytest.raises(
+        ValidationError, match="available copies cannot exceed total copies"
+    ):
         book.full_clean()
 
 

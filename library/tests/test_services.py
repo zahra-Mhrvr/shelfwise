@@ -1,4 +1,3 @@
-
 import logging
 
 import pytest
@@ -93,14 +92,18 @@ def test_borrow_book_service_logs_unavailable_rejection(
     assert "Borrow request rejected: unavailable book" in caplog.messages
 
 
-def test_borrow_book_service_raises_book_not_found(member_repository, member, borrow_service):
+def test_borrow_book_service_raises_book_not_found(
+    member_repository, member, borrow_service
+):
     member_repository.add(member)
 
     with pytest.raises(BookNotFound):
         borrow_service.borrow(book_id=1, member_id=member.id)
 
 
-def test_borrow_book_service_raises_member_not_found(book_repository, book, borrow_service):
+def test_borrow_book_service_raises_member_not_found(
+    book_repository, book, borrow_service
+):
     book_repository.add(book)
 
     with pytest.raises(MemberNotFound):

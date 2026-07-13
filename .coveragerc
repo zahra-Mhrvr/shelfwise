@@ -1,0 +1,4 @@
+[run]
+omit =
+    library/migrations/*
+    library/tests/*

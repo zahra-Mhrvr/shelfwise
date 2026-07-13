@@ -1,4 +1,3 @@
-
 from rest_framework.routers import DefaultRouter
 
 from .views import BookViewSet, LoanViewSet, MemberViewSet
@@ -9,4 +8,3 @@ router.register("members", MemberViewSet)
 router.register("loans", LoanViewSet)
 
 urlpatterns = router.urls
-

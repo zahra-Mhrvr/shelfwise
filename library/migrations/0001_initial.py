@@ -6,40 +6,79 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Book',
+            name="Book",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=200)),
-                ('author', models.CharField(max_length=120)),
-                ('total_copies', models.PositiveIntegerField()),
-                ('available_copies', models.PositiveIntegerField()),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=200)),
+                ("author", models.CharField(max_length=120)),
+                ("total_copies", models.PositiveIntegerField()),
+                ("available_copies", models.PositiveIntegerField()),
             ],
         ),
         migrations.CreateModel(
-            name='Member',
+            name="Member",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=120)),
-                ('email', models.EmailField(max_length=254, unique=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=120)),
+                ("email", models.EmailField(max_length=254, unique=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Loan',
+            name="Loan",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('borrowed_on', models.DateField(default=django.utils.timezone.localdate)),
-                ('due_on', models.DateField()),
-                ('returned_on', models.DateField(blank=True, null=True)),
-                ('book', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='loans', to='library.book')),
-                ('member', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='loans', to='library.member')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "borrowed_on",
+                    models.DateField(default=django.utils.timezone.localdate),
+                ),
+                ("due_on", models.DateField()),
+                ("returned_on", models.DateField(blank=True, null=True)),
+                (
+                    "book",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="loans",
+                        to="library.book",
+                    ),
+                ),
+                (
+                    "member",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="loans",
+                        to="library.member",
+                    ),
+                ),
             ],
         ),
     ]

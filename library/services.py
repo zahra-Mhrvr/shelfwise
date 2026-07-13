@@ -31,7 +31,6 @@ class InMemoryBookRepository:
             raise BookNotFound(f"book {book_id} was not found") from exc
 
 
-
 class InMemoryMemberRepository:
     def __init__(self) -> None:
         self._members = {}
@@ -71,14 +70,20 @@ class BorrowBookService:
         self.loan_repository = loan_repository
 
     def borrow(self, book_id, member_id):
-        logger.info("Borrow request started", extra={"book_id": str(book_id), "member_id": str(member_id)})
+        logger.info(
+            "Borrow request started",
+            extra={"book_id": str(book_id), "member_id": str(member_id)},
+        )
         book = self.book_repository.get(book_id)
         member = self.member_repository.get(member_id)
 
         try:
             book.borrow_copy()
         except ValueError as exc:
-            logger.warning("Borrow request rejected: unavailable book", extra={"book_id": str(book_id)})
+            logger.warning(
+                "Borrow request rejected: unavailable book",
+                extra={"book_id": str(book_id)},
+            )
             raise BookUnavailable(str(exc)) from exc
 
         loan = Loan(book_id=book.id, member_id=member.id)

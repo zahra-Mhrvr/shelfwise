@@ -24,7 +24,9 @@ class MemberViewSet(viewsets.ModelViewSet):
 
 
 class LoanViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Loan.objects.select_related("book", "member").all().order_by("-borrowed_on")
+    queryset = (
+        Loan.objects.select_related("book", "member").all().order_by("-borrowed_on")
+    )
     serializer_class = LoanSerializer
     borrow_service_class = DjangoBorrowBookService
     return_service_class = DjangoReturnBookService
