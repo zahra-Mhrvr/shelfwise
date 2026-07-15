@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from django.utils import timezone
 
@@ -96,3 +98,20 @@ def test_loan_cannot_be_returned_twice():
 
     with pytest.raises(ValueError, match="loan has already been returned"):
         loan.mark_returned()
+
+
+def test_loan_is_overdue_when_active_and_due_date_is_before_today():
+    book = Book(
+        title="Testing APIs",
+        author="Q. Analyst",
+        total_copies=1,
+        available_copies=0,
+    )
+    member = Member(name="Sam Reader", email="sam@example.com")
+    loan = Loan(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() - timedelta(days=1),
+    )
+
+    assert loan.is_overdue() is True

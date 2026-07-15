@@ -31,3 +31,12 @@ class LoanSerializer(serializers.ModelSerializer):
             "due_on",
             "returned_on",
         ]
+
+
+class OverdueLoanSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source="book.title", read_only=True)
+    member_email = serializers.EmailField(source="member.email", read_only=True)
+
+    class Meta:
+        model = Loan
+        fields = ["id", "book_title", "member_email", "borrowed_on", "due_on"]

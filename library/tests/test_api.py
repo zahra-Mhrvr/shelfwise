@@ -190,3 +190,43 @@ def test_active_loans_endpoint_lists_only_active_loans(api_client, book, member)
     assert response.status_code == 200
     assert active_loan.id in returned_ids
     assert returned_loan.id not in returned_ids
+
+
+@pytest.mark.django_db
+def test_overdue_loans_endpoint_lists_only_active_overdue_loans(
+    api_client,
+    book,
+    member,
+    caplog,
+):
+    overdue_loan = Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() - timedelta(days=1),
+    )
+    Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() + timedelta(days=14),
+    )
+    Loan.objects.create(
+        book=book,
+        member=member,
+        due_on=timezone.localdate() - timedelta(days=7),
+        returned_on=timezone.localdate(),
+    )
+
+    with caplog.at_level("INFO", logger="library.views"):
+        response = api_client.get("/api/loans/overdue/")
+
+    assert response.status_code == 200
+    assert response.data == [
+        {
+            "id": overdue_loan.id,
+            "book_title": book.title,
+            "member_email": member.email,
+            "borrowed_on": str(overdue_loan.borrowed_on),
+            "due_on": str(overdue_loan.due_on),
+        }
+    ]
+    assert "Overdue loans report generated" in caplog.messages

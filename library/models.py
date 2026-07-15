@@ -52,3 +52,6 @@ class Loan(models.Model):
     @property
     def is_active(self) -> bool:
         return self.returned_on is None
+
+    def is_overdue(self) -> bool:
+        return self.is_active and self.due_on < timezone.localdate()

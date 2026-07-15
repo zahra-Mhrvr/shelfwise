@@ -1,12 +1,22 @@
+import logging
+
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .exceptions import BookReturnRejected, BookUnavailable, LoanAlreadyReturned
 from .models import Book, Loan, Member
-from .serializers import BookSerializer, LoanSerializer, MemberSerializer
+from .serializers import (
+    BookSerializer,
+    LoanSerializer,
+    MemberSerializer,
+    OverdueLoanSerializer,
+)
 from .services import DjangoBorrowBookService, DjangoReturnBookService
+
+logger = logging.getLogger(__name__)
 
 
 def conflict(message: str) -> Response:
@@ -67,4 +77,14 @@ class LoanViewSet(viewsets.ReadOnlyModelViewSet):
     def active(self, request):
         loans = self.get_queryset().filter(returned_on__isnull=True)
         serializer = self.get_serializer(loans, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def overdue(self, request):
+        loans = self.get_queryset().filter(
+            returned_on__isnull=True,
+            due_on__lt=timezone.localdate(),
+        )
+        logger.info("Overdue loans report generated", extra={"count": loans.count()})
+        serializer = OverdueLoanSerializer(loans, many=True)
         return Response(serializer.data)
