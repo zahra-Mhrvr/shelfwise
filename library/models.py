@@ -28,6 +28,12 @@ class Book(models.Model):
     def __str__(self) -> str:
         return f"{self.title} by {self.author}"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["title"]),
+            models.Index(fields=["author"]),
+        ]
+
 
 class Member(models.Model):
     name = models.CharField(max_length=120)
@@ -35,6 +41,12 @@ class Member(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} <{self.email}>"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["email"]),
+        ]
 
 
 class Loan(models.Model):
@@ -55,3 +67,9 @@ class Loan(models.Model):
 
     def is_overdue(self) -> bool:
         return self.is_active and self.due_on < timezone.localdate()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["returned_on", "due_on"]),
+            models.Index(fields=["borrowed_on"]),
+        ]

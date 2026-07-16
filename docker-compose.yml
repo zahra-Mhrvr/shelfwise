@@ -1,0 +1,36 @@
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: shelfwise
+      POSTGRES_USER: shelfwise
+      POSTGRES_PASSWORD: shelfwise
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  overdue-reminders:
+    build: .
+    command: python manage.py send_overdue_reminders --dry-run
+    env_file:
+      - .env.example
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+
+volumes:
+  postgres-data:
